@@ -17,7 +17,7 @@ st.markdown(
     f"""
     <iframe src="data:image/jpg;base64,{base64.b64encode(open(background_image, 'rb').read()).decode(
 
-    )}" style="width:3000px;height:2500px;position: absolute;top:-3vh;right:-350px;opacity: 0.5;background-size: cover;background-position: center;"></iframe>
+    )}" style="width:3000px;height:3500px;position: absolute;top:-3vh;right:-350px;opacity: 0.5;background-size: cover;background-position: center;"></iframe>
     """,
     unsafe_allow_html=True
 )
@@ -54,6 +54,7 @@ class Calculo(FiltrandoDadosParaCalculo):
         self.dataframe = fetch_tjlp_data()
 
     def calculandoJPC(self, data):
+
         if data in self.dataframe.index:
             self.taxaJuros = self.dataframe.loc[data, 'Ano']
             self.valorJPC = round(self.totalJSPC * (self.dataframe.loc[data, 'Ano'] / 100), 2)
@@ -71,6 +72,24 @@ class Calculo(FiltrandoDadosParaCalculo):
             st.dataframe(self.resultadoJPC, use_container_width=True)
         else:
             st.error("Data not found in the DataFrame")
+
+    def nomeDasEmpresas(self, l100_file):
+        l100 = pd.read_excel(l100_file)
+        nomeEmpresa = ''        
+        if l100['CNPJ'].iloc[0] == 79283065000141:
+            nomeEmpresa = 'ORBENK ADMNISTRAÇÃO E SERVIÇOS LTDA'
+        elif l100['CNPJ'].iloc[0] == 14576552000157:    
+            nomeEmpresa = 'ORBENK SERVIÇOS DE SEGURANÇA LTDA'
+        elif l100['CNPJ'].iloc[0] == 10332516000197:
+            nomeEmpresa = 'ORBENK TERCEIRIZAÇÃO E SERVIÇOS LTDA'
+        elif l100['CNPJ'].iloc[0] == 82513490000194:
+            nomeEmpresa = 'PROFISER SERVIÇOS PROFISSIONAIS LTDA'
+        elif l100['CNPJ'].iloc[0] == 3750757000190:
+            nomeEmpresa = 'SEPAT MULTI SERVICE LTDA'                          
+        else:
+            nomeEmpresa = 'Empresa não encontrada'
+        return nomeEmpresa
+                    
 
 
     def limiteDedutibilidade(self):
@@ -125,8 +144,11 @@ class Calculo(FiltrandoDadosParaCalculo):
         self.tabelaEconomia()
 
 if __name__ == "__main__":
-    
-    barra = st.radio("Menu", ["Calculo JCP", "Lacs e Lalur"])    
+         
+  
+    barra = st.radio("Menu", ["Calculo JCP", "Lacs e Lalur"])
+    empresa_nome_placeholder = st.header("Empresa não selecionada")
+     
 
 
 
@@ -150,19 +172,25 @@ if __name__ == "__main__":
             l300_file=uploaded_file_l300
         )
 
+
         calculos = {year: Calculo(data=str(year),
                                    lacs_file=uploaded_file_lacs,
                                    lalur_file=uploaded_file_lalur,
                                    ecf670_file=uploaded_file_ecf670,
                                    ec630_file=uploaded_file_ec630,
                                    l100_file=uploaded_file_l100,
-                                   l300_file=uploaded_file_l300) for year in range(2019, 2024)}
+                                   l300_file=uploaded_file_l300) for year in range(2019, 2024)} 
 
+        empresa_nome = calculos[2019].nomeDasEmpresas(uploaded_file_l100)
+
+        empresa_nome_placeholder.header(empresa_nome)    
+         
+                                              
 
         if barra == "Calculo JCP":
             #calculos.
             for col, year in zip([col1, col2, col3, col4, col5], range(2019, 2024)):
-
+                
                 with col:
                     st.write('')
                     st.write('')
@@ -180,6 +208,7 @@ if __name__ == "__main__":
                     calculos[year].pipeCalculo(str(year))
 
         if barra == "Lacs e Lalur":
+
             for col, year in zip([col1, col2, col3, col4, col5], range(2019, 2024)):
                 with col:
                     st.write('')

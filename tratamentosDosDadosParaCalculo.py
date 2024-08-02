@@ -27,12 +27,6 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
         self.reservLucro = 0.0
         
 
-
-        #---Inviolavel Seguranca
-        # self.l100 = pd.read_excel(r'C:\Users\lauro.loyola\Desktop\JPC\Inviolavel Seguranca\Declarações Federais - ECF - L - Lucro Real - Lucro Líquido - L030, L100 - Balanço Patrimonial - Lucro Real.xlsx')
-        # self.l300 = pd.read_excel(r'C:\Users\lauro.loyola\Desktop\JPC\Inviolavel Seguranca\Declarações Federais - ECF - L - Lucro Real - Lucro Líquido - L030, L300 - Demonstração do Resultado do Exercício - Lucro Real.xlsx')
-
-
         #---ORBENK
         self.l100 = FiltrandoDadosParaCalculo.load_excel_file(l100_file)
         self.l300 = FiltrandoDadosParaCalculo.load_excel_file(l300_file)
@@ -42,27 +36,25 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
         self.resultsTabelaFinal = pd.DataFrame(columns=["Operation", "Value"]) 
         self.lucro_periodo_value = 0
 
-    def nomeDasEmpresas():
+    def nomeDasEmpresas(self):
+
         l100 = self.l100
-        tabelaEmpresas = pd.DataFrame(columns=['CNPJ','Nome da Empresa'])
-        
-        self.nomeEmpresa = ''
-        if l100['CNPJ'] == '82513490000194':
+        self.nomeEmpresa = ''        
+        if l100['CNPJ'].iloc[0] == '82513490000194':
             self.nomeEmpresa = 'PROFISER SERVIÇOS PROFISSIONAIS LTDA'
-
-        elif l100['CNPJ'] == '10332516000197':    
+        elif l100['CNPJ'].iloc[0] == '10332516000197':    
             self.nomeEmpresa = 'ORBENK TERCEIRIZAÇÃO E SERVIÇOS LTDA'
-
-        elif l100['CNPJ'] == '04048628000118':
+        elif l100['CNPJ'].iloc[0] == '04048628000118':
             self.nomeEmpresa = 'INVIOLAVEL SEGURANÇA ELETRONICA LTDA'
         else:
-            self.nomeEmpresa = 'Empresa não encontrada'              
+            self.nomeEmpresa = 'Empresa não encontrada'             
 
 
 
     st.cache_data(ttl='1d')
     def set_date(self, data):
         self.data = data         
+
     
     st.cache_data(ttl='1d')
     def capitalSocial(self):
@@ -72,6 +64,8 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
             (l100['Data Inicial'].str.contains(self.data))]
         self.capSocial = l100['Vlr Saldo Final'].sum()
         self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Capital Social", "Value": self.capSocial}])], ignore_index=True)
+
+
 
     st.cache_data(ttl='1d')
     def capitalIntegralizador(self):
@@ -141,7 +135,7 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
     st.cache_data(ttl='1d')
     def TotalFinsCalcJSPC(self):
 
-        self.totalJSPC =  sum((self.capSocial,self.reservaCapital,self.lucroAcumulado,self.reservLucro))
+        self.totalJSPC =  sum((self.capSocial,self.reservaCapital,self.lucroAcumulado,self.reservLucro,self.contaPatriNClassifica,self.prejuizoPeirod))
         self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Total Fins Calc JSPC", "Value": self.totalJSPC}])], ignore_index=True)
     
 
@@ -174,7 +168,7 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
         st.session_state[key] = st.session_state[key]
         self.reservLegal = st.number_input('Digite o valor da Reserva Legal', key=key, value=st.session_state[key])
         self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Reserva legal", "Value": self.reservLegal}])], ignore_index=True)
-        self.update_totalfinsparaJPC()  # <--- Call the new method here
+        #self.update_totalfinsparaJPC()  # <--- Call the new method here
 
 
 
@@ -256,8 +250,17 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
     st.cache_data(ttl='1d')
     def PrejuizoPeriodo(self):
 
-  
-        self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Ajustes Exercícios Anteriores", "Value": self.contaPatriNClassifica}])], ignore_index=True)
+        key = f'PrejuAcumulado{self.data}'
+
+        if key not in st.session_state:
+            st.session_state[key] = 0.0
+        
+        st.session_state[key] = st.session_state[key]
+
+        self.prejuizoPeirod = st.number_input('Digite o valor do Prejuízo do Período',key=key,value=st.session_state[key]) * -1
+
+        self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Prejuízo do Período", "Value": self.prejuizoPeirod}])], ignore_index=True)
+        
     
     st.cache_data(ttl='1d')    
     def prejuizosAcumulados(self):
@@ -266,7 +269,7 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
         l100 = l100[(l100['Conta Referencial']=='2.03.04.01.11')&
             (l100['Data Inicial'].str.contains(self.data))&(
             l100['Período Apuração']=='A00 – Receita Bruta/Balanço de Suspensão e Redução Anual')]
-        self.contaPatriNClassifica = l100['Vlr Saldo Final'].sum()
+        self.contaPatriNClassifica = l100['Vlr Saldo Final'].sum() * -1
         self.resultsCalcJcp = pd.concat([self.resultsCalcJcp, pd.DataFrame([{"Operation": "Prejuízos Acumulados", "Value": self.contaPatriNClassifica}])], ignore_index=True)
     
     st.cache_data(ttl='1d')
@@ -286,7 +289,7 @@ class FiltrandoDadosParaCalculo(LacsLalurCSLL):
 
         self.acoesTesouraria()
         self.contPatrimonioNaoClass()
-        #self.PrejuizoPeriodo()
+        self.PrejuizoPeriodo()
         self.prejuizosAcumulados()
 
         self.acoesTesouraria()
